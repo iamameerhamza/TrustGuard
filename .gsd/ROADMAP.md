@@ -17,7 +17,7 @@
 **Objective**: Clean repo, URL validation, normalization, health endpoint.
 
 ### Phase 2: Feature extraction foundation
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Working feature extractor (lexical, keyword, entropy) with tests.
 
 ### Phase 3: Basic risk rules and audit logs
