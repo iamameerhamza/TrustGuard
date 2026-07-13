@@ -13,7 +13,7 @@
 ## Phases
 
 ### Phase 1: Project skeleton, clean setup, and URL handling
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Clean repo, URL validation, normalization, health endpoint.
 
 ### Phase 2: Feature extraction foundation
