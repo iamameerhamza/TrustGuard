@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from app.api.schemas import ScanRequest, ScanResponse
 from app.core.normalizer import normalize_url
+from app.core.extractor import extract_features
 
 app = FastAPI(title="TrustGuard API")
 
@@ -11,4 +12,5 @@ def health_check():
 @app.post("/scan", response_model=ScanResponse)
 def scan_url(request: ScanRequest):
     normalized = normalize_url(request.url)
-    return ScanResponse(**normalized)
+    features = extract_features(normalized)
+    return ScanResponse(**normalized, features=features)

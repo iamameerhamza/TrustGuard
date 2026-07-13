@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Dict, Any
 
 class ScanRequest(BaseModel):
     url: str
@@ -10,3 +11,4 @@ class ScanResponse(BaseModel):
     path: str
     query: str
     scheme: str
+    features: Dict[str, Any]

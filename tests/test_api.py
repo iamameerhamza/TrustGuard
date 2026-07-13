@@ -17,3 +17,5 @@ def test_scan_url():
     assert data["scheme"] == "http"
     assert data["query"] == "q=1"
     assert data["url"] == "http://example.com/test?q=1"
+    assert "features" in data
+    assert data["features"]["domain_length"] == 11
