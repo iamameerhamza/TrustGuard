@@ -1,0 +1,23 @@
+services:
+  backend:
+    build: .
+    environment:
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}
+      - TRUSTGUARD_API_KEY=${TRUSTGUARD_API_KEY:?set TRUSTGUARD_API_KEY in .env}
+      - RATE_LIMIT=${RATE_LIMIT:-60}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8080}
+    volumes:
+      - ./models:/app/models
+      - trustguard-db:/app
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  trustguard-db:

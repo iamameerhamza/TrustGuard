@@ -21,41 +21,41 @@
 **Objective**: Working feature extractor (lexical, keyword, entropy) with tests.
 
 ### Phase 3: Basic risk rules and audit logs
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: First real scanner with an audit trail, storing scan request and result in DB.
 
 ### Phase 4: Dataset collection pipeline
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Repeatable dataset pipeline collecting from Tranco, OpenPhish, URLHaus.
 
 ### Phase 5: Baseline machine learning
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Trained baseline model (Random Forest) with proper metrics and a model card.
 
 ### Phase 6: Prediction API and caching
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Fast API with caching and ML predictions.
 
 ### Phase 7: Threat intelligence layer
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Instant known-threat detection with local blacklists and reputation.
 
 ### Phase 8: Explainability engine
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Human-readable reasoning utilizing rules and optional LLM context.
 
 ### Phase 9: Security hardening and audit layer
-**Status**: ⬜ Not Started
-**Objective**: Safer, rate-limited, and traceable system with model version logging.
+**Status**: ✅ Complete
+**Objective**: Basic rate limiting and complete audit logging of everything.on logging.
 
 ### Phase 10: Frontend and user flow
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Usable public-facing interface connecting frontend to API.
 
 ### Phase 11: Historical intelligence and community reporting
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: History tracking, community voting, and report layers.
 
 ### Phase 12: Final stabilization and release
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Final release candidate, load testing, calibration, and documentation.
