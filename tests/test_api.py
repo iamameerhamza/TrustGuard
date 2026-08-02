@@ -1,4 +1,5 @@
 import pytest
+import os
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from app.main import app
@@ -30,7 +31,7 @@ def mock_external_calls():
             "vt": mock_vt,
         }
 
-client = TestClient(app)
+client = TestClient(app, headers={"X-API-Key": os.getenv("TRUSTGUARD_API_KEY", "")})
 
 def test_health_check():
     response = client.get("/health")

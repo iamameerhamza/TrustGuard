@@ -3,7 +3,7 @@ from app.main import app
 import sqlite3
 import os
 
-client = TestClient(app)
+client = TestClient(app, headers={"X-API-Key": os.getenv("TRUSTGUARD_API_KEY", "")})
 
 def test_submit_report():
     response = client.post("/report", json={
