@@ -1,28 +1,47 @@
-.aider*
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
-env.bak/
-venv.bak/
-test_deps/
-node_modules/
-dist/
-build/
-.pytest_cache/
-.coverage
-htmlcov/
-.env
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
 
-*.onnx
-*.onnx.data
+# C extensions
+*.so
 
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Environments
+.env
+.env.local
+.venv/
+env/
+venv/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+test_deps/
+.tmp/
+
+# Dependencies & Build artifacts
+node_modules/
+*.whl
+graphify-out/
+.gsd/
+
+# Heavy AI Models & Temp Data
 *.onnx
 *.onnx.data
 *.pt
-*.whl
+*.joblib
 kaggle/output/
+vt_*.json
+*.db-shm
+*.db-wal
+
+# Editor / IDE
+.vscode/
+.idea/
+.aider*
