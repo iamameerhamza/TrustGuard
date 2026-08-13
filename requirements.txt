@@ -31,3 +31,5 @@ pikepdf>=8.0.0
 msoffcrypto-tool>=5.0.0
 oletools>=0.60.0
 requests>=2.31.0
+redis>=5.0.0
+tldextract>=5.1.0
