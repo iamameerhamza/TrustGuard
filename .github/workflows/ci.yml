@@ -23,8 +23,11 @@ jobs:
       - name: Start backend
         run: |
           nohup uvicorn app.main:app --port 8000 &
-          sleep 5
-          curl -sf http://localhost:8000/health
+          for i in {1..15}; do
+            curl -sf http://localhost:8000/health && break
+            echo "Waiting for backend..."
+            sleep 2
+          done
         env:
           TRUSTGUARD_API_KEY: ci-test-key
 
@@ -50,7 +53,11 @@ jobs:
       - name: Start backend
         run: |
           nohup uvicorn app.main:app --port 8000 &
-          sleep 5
+          for i in {1..15}; do
+            curl -sf http://localhost:8000/health && break
+            echo "Waiting for backend..."
+            sleep 2
+          done
         env:
           TRUSTGUARD_API_KEY: ci-test-key
 
