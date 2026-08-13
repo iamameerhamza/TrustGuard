@@ -20,6 +20,9 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      - name: Verify critical dependencies
+        run: python -c "import redis; import tldextract; print('redis:', redis.__version__, 'tldextract:', tldextract.__version__)"
+
       - name: Start backend
         run: |
           nohup uvicorn app.main:app --port 8000 &
@@ -53,6 +56,9 @@ jobs:
           cache: 'pip'
 
       - run: pip install -r requirements.txt
+
+      - name: Verify critical dependencies
+        run: python -c "import redis; import tldextract; print('redis:', redis.__version__, 'tldextract:', tldextract.__version__)"
 
       - name: Start backend
         run: |
