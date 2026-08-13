@@ -6,6 +6,7 @@ This folder contains all project documentation, research, and study materials.
 
 - `architecture.md` — system architecture and module descriptions
 - `blueprint.md` — project blueprint and planning
+- `roadmap_2030.md` — phased evolution plan toward a 2030-grade TrustGuard
 - `project_report.md` — formal project report
 - `model_card.md` — ML model card
 - `recommended_study_order.md` — curriculum guide

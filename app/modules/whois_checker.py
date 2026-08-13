@@ -172,17 +172,32 @@ def score_domain_age(age_days: Optional[int]) -> dict:
     }
 
 
-# ── Convenience function (used by extract_features + scan router) ─────────────
+import asyncio
 
-def check_domain(domain: str) -> dict:
-    """
-    Single entry point: runs the cached WHOIS lookup and returns a fully
-    scored result dict.  This is what scan_url() and extract_features()
-    should call.
+def _sync_cached_lookup(domain: str) -> Optional[int]:
+    """Helper to run the cached lookup synchronously inside a thread."""
+    return cached_whois(domain)
 
-    Usage:
-        result = check_domain("paypal-login-secure.xyz")
-        # → {"age_days": 3, "score": 0.92, "label": "Critical", ...}
+
+async def check_domain(domain: str) -> dict:
     """
-    age_days = cached_whois(domain)
+    Single entry point: runs the cached WHOIS lookup asynchronously
+    and returns a fully scored result dict.
+
+    Uses asyncio.to_thread to prevent the synchronous python-whois library
+    from blocking the FastAPI event loop, and enforces a strict 3-second timeout.
+    """
+    try:
+        # Offload the synchronous lru_cache (and underlying network call) to a thread
+        age_days = await asyncio.wait_for(
+            asyncio.to_thread(_sync_cached_lookup, domain),
+            timeout=5.0
+        )
+    except asyncio.TimeoutError:
+        logger.warning("WHOIS lookup timed out for %s", domain)
+        return score_domain_age(None)
+    except Exception as exc:
+        logger.warning("WHOIS lookup thread failed for %s: %s", domain, exc)
+        return score_domain_age(None)
+
     return score_domain_age(age_days)

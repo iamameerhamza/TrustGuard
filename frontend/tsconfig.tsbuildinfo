@@ -1,1 +1,1 @@
-{"root":["./src/App.tsx","./src/main.tsx"],"version":"6.0.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/scanform.tsx","./src/components/tabs/agenticguardtab.tsx","./src/components/tabs/documentinspectortab.tsx","./src/components/tabs/qrscannertab.tsx","./src/components/tabs/trustsealstab.tsx","./src/components/tabs/urlscannertab.tsx","./src/components/tabs/visualinspectortab.tsx","./src/lib/api.ts"],"version":"6.0.3"}

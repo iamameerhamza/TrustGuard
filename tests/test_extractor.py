@@ -10,6 +10,6 @@ def test_extract_features():
     assert features["url_length"] == 38
     assert features["domain_length"] == 24
     assert features["subdomain_count"] == 1
-    assert features["has_special_chars"] is True
+    assert features["has_special_chars"] == 1.0
     assert features["suspicious_keywords"] == 3  # secure, login, update
     assert features["entropy"] > 0

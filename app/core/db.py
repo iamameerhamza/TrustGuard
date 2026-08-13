@@ -14,9 +14,16 @@ def init_db(db_path: str = "trustguard.db"):
             ml_prediction TEXT,
             blacklisted BOOLEAN DEFAULT 0,
             reasons TEXT,
+            shap_values TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    
+    # Safely migrate existing table to include shap_values if it doesn't exist
+    try:
+        cursor.execute('ALTER TABLE scans ADD COLUMN shap_values TEXT')
+    except sqlite3.OperationalError:
+        pass # Column already exists
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS model_versions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,14 +45,15 @@ def init_db(db_path: str = "trustguard.db"):
     conn.commit()
     conn.close()
 
-def log_scan(db_path: str, url: str, risk_score: int, prediction: str, ml_score: float = None, ml_prediction: str = None, blacklisted: bool = False, reasons: list = None):
+def log_scan(db_path: str, url: str, risk_score: int, prediction: str, ml_score: float = None, ml_prediction: str = None, blacklisted: bool = False, reasons: list = None, shap_values: dict = None):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     reasons_str = json.dumps(reasons) if reasons else "[]"
+    shap_str = json.dumps(shap_values) if shap_values else "{}"
     cursor.execute('''
-        INSERT INTO scans (url, risk_score, prediction, ml_score, ml_prediction, blacklisted, reasons)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (url, risk_score, prediction, ml_score, ml_prediction, blacklisted, reasons_str))
+        INSERT INTO scans (url, risk_score, prediction, ml_score, ml_prediction, blacklisted, reasons, shap_values)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (url, risk_score, prediction, ml_score, ml_prediction, blacklisted, reasons_str, shap_str))
     conn.commit()
     conn.close()
 

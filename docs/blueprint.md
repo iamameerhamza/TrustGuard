@@ -45,5 +45,16 @@ Periodic feed refresh, model version tracking, recalibration. Scheduled updates 
 ## Future Expansion
 Emails, QR codes, downloads, brand-impersonation pages.
 
+## 2030 Evolution Path
+TrustGuard should evolve from a URL-first trust checker into a layered, privacy-preserving security platform without losing the current student-friendly scope.
+
+The next-stage roadmap is documented in [roadmap_2030.md](roadmap_2030.md) and focuses on four practical themes:
+1. Edge-first inference for fast local scans.
+2. Multi-modal analysis for URLs, webpages, QR codes, documents, audio, and video.
+3. Agentic investigation and response with structured, explainable outputs.
+4. Federated intelligence so local feedback improves the network without sharing raw user data.
+
+The current project should remain grounded in URLs and webpages while the architecture keeps room for browser extensions, email scanning, and safer on-device inspection.
+
 ## Deliverables
 Architecture document, flow diagram, study guide, dataset plan, evaluation plan, demo script, public presentation deck.

@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Shield, ShieldAlert, Search, AlertTriangle, Loader } from 'lucide-react';
+import { Shield, AlertTriangle } from 'lucide-react';
 
 interface ScanFormProps {
   url: string;
@@ -20,13 +19,7 @@ const ScanForm = ({
   setUrl,
   loading,
   error,
-  setError,
   handleScan,
-  handleReport,
-  reporting,
-  reportDone,
-  reportComment,
-  setReportComment,
 }: ScanFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -1,0 +1,367 @@
+
+TrustGuard
+Intelligence Upgrade Roadmap
+Phase 2 · FastAPI Backend · Free & Open Source
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Three Modules. One Goal: Zero-Day Survival.
+This document provides a complete, implementation-ready plan for upgrading TrustGuard with WHOIS domain age detection, VirusTotal multi-engine consensus, and a monthly ML retraining pipeline — all using free tools and open data.
+
+
+Executive Overview
+TrustGuard currently operates a strong Static/Lexical Analysis and ML Detection pipeline. This roadmap defines the three free upgrades that transform it from a good prototype into a production-grade, self-improving threat intelligence system.
+
+
+MODULE 1 — WHOIS Domain Age Detection
+Effort: Low  |  Timeline: Week 1–2  |  Impact: Very High
+
+Why It Matters
+Domain age is one of the single strongest phishing indicators available. Over 70% of phishing domains are used within 5 days of registration and abandoned within 30. This one feature can flag entire attack campaigns before any blacklist has caught them.
+
+Installation
+pip install python-whois
+
+Core Implementation
+Create a new file: app/modules/whois_checker.py
+
+import whois
+from datetime import datetime, timezone
+from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
+
+def get_domain_age_days(domain: str) -> Optional[int]:
+    """Returns domain age in days, or None if lookup fails."""
+    try:
+        w = whois.whois(domain)
+        created = w.creation_date
+        if isinstance(created, list):
+            created = created[0]
+        if created is None:
+            return None
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        age = (datetime.now(timezone.utc) - created).days
+        return max(age, 0)
+    except Exception as e:
+        logger.warning(f"WHOIS lookup failed for {domain}: {e}")
+        return None
+
+def score_domain_age(age_days: Optional[int]) -> dict:
+    """Converts age to a risk score and plain-English reason."""
+    if age_days is None:
+        return {"score": 0.5, "label": "Unknown", "reason":
+                "Domain age could not be determined."}
+    if age_days < 7:
+        return {"score": 0.9, "label": "Critical",
+                "reason": f"Domain is only {age_days} days old — 
+                           extremely high-risk."}
+    if age_days < 30:
+        return {"score": 0.75, "label": "High",
+                "reason": f"Domain is {age_days} days old — suspicious."}
+    if age_days < 180:
+        return {"score": 0.4, "label": "Moderate",
+                "reason": f"Domain is {age_days} days old."}
+    return {"score": 0.1, "label": "Low",
+            "reason": f"Domain is {age_days} days old — established."}
+
+FastAPI Integration
+Add this to your existing scan endpoint in app/main.py or app/routers/scan.py:
+
+from app.modules.whois_checker import get_domain_age_days, score_domain_age
+
+# Inside your scan function:
+age_days = get_domain_age_days(normalized_domain)
+whois_result = score_domain_age(age_days)
+
+# Add to your final response:
+"whois": {
+    "domain_age_days": age_days,
+    "risk_score": whois_result["score"],
+    "label": whois_result["label"],
+    "reason": whois_result["reason"]
+}
+
+Caching Warning
+WHOIS queries are slow (300ms–2s). Wrap this call inside your existing LRU cache keyed on the domain, not the full URL. Domain age only needs to be checked once per domain per 24 hours.
+
+from functools import lru_cache
+
+@lru_cache(maxsize=1000)
+def cached_whois(domain: str) -> Optional[int]:
+    return get_domain_age_days(domain)
+
+Edge Cases to Handle
+⚠  Some TLDs block WHOIS lookups — return None gracefully, never crash
+⚠  creation_date can be a list (multiple registrars) — always take [0]
+⚠  Private/redacted registrations return None — treat as moderate risk, not safe
+⚠  Punycode international domains need decoding first before lookup
+
+
+MODULE 2 — VirusTotal Multi-Engine Consensus
+Effort: Low–Medium  |  Timeline: Week 2–4  |  Impact: Extremely High
+
+Why It Matters
+VirusTotal aggregates 70+ antivirus and threat intelligence engines into a single API call. One URL scan gives you consensus from Kaspersky, Sophos, Fortinet, and dozens more. The free tier allows 500 requests/day and 4 requests/minute — enough for a real product at launch.
+
+Get your free API key at: https://www.virustotal.com/gui/join-us
+
+Installation
+pip install vt-py  # Official VirusTotal Python client
+
+Core Implementation
+Create: app/modules/virustotal_checker.py
+
+import vt
+import os
+from typing import Optional
+import asyncio
+
+VT_API_KEY = os.getenv("VIRUSTOTAL_API_KEY")
+
+async def check_url_virustotal(url: str) -> Optional[dict]:
+    """Submits URL to VirusTotal and returns consensus result."""
+    if not VT_API_KEY:
+        return None  # Graceful degradation if key not set
+
+    async with vt.Client(VT_API_KEY) as client:
+        try:
+            # Submit URL for analysis
+            analysis = await client.scan_url_async(url)
+            await asyncio.sleep(15)  # Wait for engines to process
+
+            # Fetch the completed analysis
+            result = await client.get_object_async(
+                f"/analyses/{analysis.id}"
+            )
+            stats = result.stats
+            return parse_vt_result(stats)
+
+        except vt.APIError as e:
+            if e.code == "QuotaExceededError":
+                return {"error": "rate_limited"}
+            return None
+
+def parse_vt_result(stats: dict) -> dict:
+    """Converts raw engine stats to a clean risk assessment."""
+    malicious  = stats.get("malicious", 0)
+    suspicious = stats.get("suspicious", 0)
+    total      = sum(stats.values())
+    flagged    = malicious + suspicious
+    ratio      = flagged / total if total > 0 else 0
+
+    if malicious >= 5:
+        label = "Confirmed Malicious"
+        score = min(0.95, 0.7 + (malicious / total))
+    elif malicious > 0 or suspicious >= 3:
+        label = "Suspicious"
+        score = 0.6
+    else:
+        label = "Clean"
+        score = max(0.05, ratio)
+
+    return {
+        "malicious_engines": malicious,
+        "suspicious_engines": suspicious,
+        "total_engines": total,
+        "risk_score": round(score, 2),
+        "label": label,
+        "reason": f"{flagged}/{total} engines flagged this URL."
+    }
+
+Rate Limit Strategy
+Free tier = 500 req/day, 4 req/min. Protect it with this approach:
+
+1. Only call VirusTotal if your local ML score is above 0.4 (pre-filter with cheap checks first)
+2. Cache VT results for 24 hours per URL — same URL should never burn two quota calls
+3. Use a Redis or in-memory TTL cache keyed on the normalized URL
+4. If rate_limited is returned, degrade gracefully — return existing risk score without VT layer
+
+Environment Setup
+Add to your .env file:
+VIRUSTOTAL_API_KEY=your_free_key_here
+
+Load it in your FastAPI app startup:
+from dotenv import load_dotenv
+load_dotenv()
+
+
+MODULE 3 — Monthly ML Retraining Pipeline
+Effort: Medium  |  Timeline: Month 2  |  Impact: High (long-term)
+
+Why It Matters
+A model trained once becomes stale within weeks. Phishing patterns evolve constantly — new keyword tricks, new TLD abuse, new URL structures. A monthly retraining pipeline keeps your Random Forest current without manual intervention. All data sources below are free and public.
+
+Free Data Sources
+🔴 Malicious: PhishTank — phish_verified.csv updated daily. Free download, no key needed.
+🔴 Malicious: OpenPhish — plain text URL feed, updated every 12 hours. Free tier available.
+🔴 Malicious: URLhaus (abuse.ch) — CSV feed of active malware URLs. Completely free.
+🟢 Legitimate: Tranco Top 1M — weekly-updated list of the most legitimate domains on the web. Free.
+🟢 Legitimate: Alexa/Majestic top sites (archived) — additional legitimate domain source.
+
+Pipeline Architecture
+Create: scripts/retrain_pipeline.py
+
+#!/usr/bin/env python3
+"""
+TrustGuard Monthly Retraining Pipeline
+Run: python scripts/retrain_pipeline.py
+Schedule: cron 0 2 1 * * (2am on 1st of each month)
+"""
+import requests, csv, io, joblib, logging
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+from datetime import datetime
+from app.modules.feature_extractor import extract_features
+
+logger = logging.getLogger(__name__)
+MODEL_PATH = "models/rf_model.joblib"
+
+PHISHING_FEEDS = [
+    "http://data.phishtank.com/data/online-valid.csv",
+    "https://openphish.com/feed.txt",
+    "https://urlhaus.abuse.ch/downloads/csv_recent/",
+]
+LEGIT_FEED = "https://tranco-list.eu/top-1m.csv.zip"
+
+def fetch_phishing_urls() -> list[str]:
+    urls = []
+    # PhishTank CSV
+    r = requests.get(PHISHING_FEEDS[0], timeout=30)
+    reader = csv.DictReader(io.StringIO(r.text))
+    urls += [row["url"] for row in reader if row.get("url")]
+    # OpenPhish plain text
+    r = requests.get(PHISHING_FEEDS[1], timeout=30)
+    urls += r.text.strip().splitlines()
+    logger.info(f"Fetched {len(urls)} phishing URLs")
+    return urls[:50000]  # Cap for training balance
+
+def fetch_legit_urls() -> list[str]:
+    import zipfile, io as _io
+    r = requests.get(LEGIT_FEED, timeout=60)
+    z = zipfile.ZipFile(_io.BytesIO(r.content))
+    with z.open("top-1m.csv") as f:
+        reader = csv.reader(io.TextIOWrapper(f))
+        urls = [f"https://{row[1]}" for row in reader if len(row) > 1]
+    logger.info(f"Fetched {len(urls)} legitimate URLs")
+    return urls[:50000]
+
+def build_dataset(phishing: list, legit: list) -> pd.DataFrame:
+    rows = []
+    for url in phishing:
+        try:
+            feats = extract_features(url)
+            feats["label"] = 1
+            rows.append(feats)
+        except Exception:
+            pass
+    for url in legit:
+        try:
+            feats = extract_features(url)
+            feats["label"] = 0
+            rows.append(feats)
+        except Exception:
+            pass
+    return pd.DataFrame(rows)
+
+def train_and_save(df: pd.DataFrame):
+    X = df.drop("label", axis=1)
+    y = df["label"]
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+    model = RandomForestClassifier(
+        n_estimators=200,
+        max_depth=20,
+        class_weight="balanced",
+        n_jobs=-1,
+        random_state=42
+    )
+    model.fit(X_train, y_train)
+    report = classification_report(y_test, model.predict(X_test))
+    logger.info(f"Model performance:\n{report}")
+    # Save with timestamp backup
+    ts = datetime.now().strftime("%Y%m%d_%H%M")
+    joblib.dump(model, f"models/rf_model_{ts}.joblib")
+    joblib.dump(model, MODEL_PATH)  # Overwrite active model
+    logger.info(f"Model saved to {MODEL_PATH}")
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    logger.info("Starting retraining pipeline...")
+    phishing_urls = fetch_phishing_urls()
+    legit_urls    = fetch_legit_urls()
+    df = build_dataset(phishing_urls, legit_urls)
+    logger.info(f"Dataset: {len(df)} samples")
+    train_and_save(df)
+    logger.info("Retraining complete.")
+
+Scheduling (Cron)
+Add to your server crontab (crontab -e):
+# Retrain TrustGuard ML model at 2am on the 1st of each month
+0 2 1 * * cd /path/to/trustguard && python scripts/retrain_pipeline.py >> logs/retrain.log 2>&1
+
+Zero-Downtime Hot Reload
+After saving the new model, reload it without restarting FastAPI:
+# In app/ml/predictor.py
+import joblib, os
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+class ModelReloader(FileSystemEventHandler):
+    def on_modified(self, event):
+        if event.src_path.endswith("rf_model.joblib"):
+            global model
+            model = joblib.load("models/rf_model.joblib")
+            print("Model hot-reloaded successfully.")
+
+
+PUTTING IT TOGETHER — Unified Risk Score Fusion
+
+Weighted Score Aggregation
+Each module produces its own risk score (0.0–1.0). Combine them with weights that reflect signal reliability:
+
+def fuse_scores(ml_score, whois_score, vt_score) -> dict:
+    """Weighted fusion of all intelligence layers."""
+    weights = {
+        "ml":    0.35,  # Random Forest — your trained model
+        "whois": 0.25,  # Domain age — very high signal
+        "vt":    0.40,  # VirusTotal consensus — most authoritative
+    }
+    # Graceful degradation if a module is unavailable
+    active = {}
+    if ml_score    is not None: active["ml"]    = ml_score
+    if whois_score is not None: active["whois"] = whois_score
+    if vt_score    is not None: active["vt"]    = vt_score
+
+    if not active:
+        return {"final_score": 0.5, "confidence": "low"}
+
+    total_weight = sum(weights[k] for k in active)
+    fused = sum(active[k] * weights[k] for k in active) / total_weight
+
+    confidence = "high" if len(active) == 3 else "medium" if len(active) == 2 else "low"
+    return {"final_score": round(fused, 3), "confidence": confidence}
+
+Final Verdict Thresholds
+🟢 0.0 – 0.35  →  Safe  (green)
+🟡 0.35 – 0.60  →  Suspicious — proceed with caution  (amber)
+🟠 0.60 – 0.80  →  High Risk — likely phishing  (orange)
+🔴 0.80 – 1.0   →  Confirmed Threat — block immediately  (red)
+
+Implementation Timeline
+
+
+Long-Term Survival Checklist
+✅ Retrain the model monthly — stale ML is worse than no ML
+✅ Monitor your VirusTotal quota daily — set an alert at 400/500 requests
+✅ Keep WHOIS results cached per-domain for 24 hours minimum
+✅ Always degrade gracefully — if VT is down, still return ML + WHOIS scores
+✅ Log which module flagged each threat — this data trains your next model version
+✅ Consider adding a BERT-based URL classifier from HuggingFace in Phase 3
+
+TrustGuard Phase 2 Roadmap  ·  Built with open-source tools  ·  Zero licensing cost

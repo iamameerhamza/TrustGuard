@@ -10,6 +10,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from app.core.normalizer import normalize_url
 from app.core.extractor import extract_features
+import app.core.extractor
+app.core.extractor.cached_whois = lambda domain: None
 
 TRANCO_URL = "https://tranco-list.eu/top-1m.csv.zip"
 OPENPHISH_URL = "https://openphish.com/feed.txt"
@@ -75,7 +77,7 @@ def process_and_save(urls_with_labels, output_file):
     ]
     
     with open(output_file, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
         writer.writeheader()
         
         for url, label in urls_with_labels:
